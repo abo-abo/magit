@@ -93,7 +93,7 @@ Use the function by the same name instead of this variable.")
   (require 'ediff)
   (require 'eshell)
   (require 'ido)
-  (require 'iswitchb)
+  ;; (require 'iswitchb)
   (require 'package nil t)
   (require 'view))
 
