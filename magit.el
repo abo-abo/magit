@@ -6695,6 +6695,9 @@ Other key binding:
   (when (window-configuration-p magit-saved-window-config)
     (when (eq major-mode 'ediff-mode)
       (kill-buffer))
+    (let (buffer)
+      (when (setq buffer (get-buffer "*Ediff Registry*"))
+        (kill-buffer buffer)))
     (set-window-configuration magit-saved-window-config)
     (setq magit-saved-window-config nil)))
 
