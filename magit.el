@@ -6688,9 +6688,21 @@ Other key binding:
 (defvar magit-ediff-windows nil
   "The window configuration that will be restored when Ediff is finished.")
 
+(defvar magit-saved-window-config nil)
+
+(defun magit-ediff-restore-window-config ()
+  (remove 'ediff-after-quit-hook-internal 'magit-ediff-restore-window-config)
+  (when (window-configuration-p magit-saved-window-config)
+    (when (eq major-mode 'ediff-mode)
+      (kill-buffer))
+    (set-window-configuration magit-saved-window-config)
+    (setq magit-saved-window-config nil)))
+
 (defun magit-ediff ()
   "View the current DIFF section in ediff."
   (interactive)
+  (setq magit-saved-window-config (current-window-configuration))
+  (add-hook 'ediff-after-quit-hook-internal 'magit-ediff-restore-window-config)
   (let ((diff (magit-current-section)))
     (when (eq (magit-section-type (magit-current-section)) 'diffstat)
       (setq diff (magit-diff-section-for-diffstat diff)))
@@ -6706,21 +6718,21 @@ Other key binding:
     (unless (eq 'diff (magit-section-type diff))
       (user-error "No diff at this location"))
     (let* ((status (magit-section-diff-status diff))
-           (file1  (magit-section-info diff))
-           (file2  (magit-section-diff-file2 diff))
-           (range  (magit-diff-range diff)))
+           (file1 (magit-section-info diff))
+           (file2 (magit-section-diff-file2 diff))
+           (range (magit-diff-range diff)))
       (cond
-       ((memq status '(new deleted typechange))
-        (message "Why ediff a %s file?" status))
-       ((and (eq status 'unmerged)
-             (eq (cdr range) 'working))
-        (magit-interactive-resolve file1))
-       ((consp (car range))
-        (magit-ediff-buffers3 (magit-show (caar range) file2)
-                              (magit-show (cdar range) file2)
-                              (magit-show (cdr range) file1)))
-       (t
-        (magit-ediff-buffers  (magit-show (car range) file2)
+        ((memq status '(new deleted typechange))
+         (message "Why ediff a %s file?" status))
+        ((and (eq status 'unmerged)
+              (eq (cdr range) 'working))
+         (magit-interactive-resolve file1))
+        ((consp (car range))
+         (magit-ediff-buffers3 (magit-show (caar range) file2)
+                               (magit-show (cdar range) file2)
+                               (magit-show (cdr range) file1)))
+        (t
+         (magit-ediff-buffers (magit-show (car range) file2)
                               (magit-show (cdr range) file1)))))))
 
 (defun magit-ediff-buffers (a b)
