@@ -4213,11 +4213,22 @@ from the parent keymap `magit-mode-map' are also available."
                       "Show commit (hash or ref)")))
   (when (magit-git-failure "cat-file" "commit" commit)
     (user-error "%s is not a commit" commit))
-  (magit-mode-setup magit-commit-buffer-name
-                    (if noselect 'display-buffer 'pop-to-buffer)
-                    #'magit-commit-mode
-                    #'magit-refresh-commit-buffer
-                    commit))
+  (let ((top-dir (magit-get-top-dir)))
+    (if top-dir
+        (with-current-buffer
+            (magit-mode-display-buffer
+             magit-commit-buffer-name
+             #'magit-commit-mode
+             (if noselect
+                 'display-buffer
+               'pop-to-buffer))
+          (magit-mode-init
+           top-dir
+           #'magit-commit-mode
+           #'magit-refresh-commit-buffer
+           commit))
+      (user-error
+       "Not inside a Git repository"))))
 
 (defun magit-show-item-or-scroll-up ()
   "Update commit or status buffer for item at point.
@@ -4266,12 +4277,29 @@ stash at point, then prompt for a commit."
       (call-interactively 'magit-show-commit))))
 
 (defun magit-refresh-commit-buffer (commit)
-  (magit-git-insert-section (commitbuf nil)
-      #'magit-wash-commit
-    "log" "-1" "--decorate=full"
-    "--pretty=medium" (magit-diff-U-arg)
-    "--cc" "-p" (and magit-show-diffstat "--stat")
-    magit-diff-options commit))
+  (if (magit-commit-huge-p commit)
+      (magit-git-insert-section (commitbuf nil)
+          #'magit-wash-commit
+        "log" "-1" "--decorate=full"
+        "--pretty=medium"
+        "--cc" "--stat"
+        magit-diff-options commit)
+    (magit-git-insert-section (commitbuf nil)
+        #'magit-wash-commit
+      "log" "-1" "--decorate=full"
+      "--pretty=medium" (magit-diff-U-arg)
+      "--cc" "-p"
+      (and magit-show-diffstat "--stat")
+      magit-diff-options commit)))
+
+(defun magit-commit-huge-p (com)
+  (let ((res (shell-command-to-string
+              (format "git diff --shortstat %s^..%s" com com))))
+    (if (or (string-match "\\([0-9]+\\) insertions" res)
+            (string-match "\\([0-9]+\\) deletions" res))
+        (> (read (match-string-no-properties 1 res)) 1000)
+      (warn "can't match insertions in %S" res)
+      t)))
 
 ;;;;; Commit Washing
 
