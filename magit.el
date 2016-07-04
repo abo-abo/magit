@@ -4277,7 +4277,9 @@ stash at point, then prompt for a commit."
       (call-interactively 'magit-show-commit))))
 
 (defun magit-refresh-commit-buffer (commit)
-  (if (magit-commit-huge-p commit)
+  (if (and
+       magit-ignore-huge-commits
+       (magit-commit-huge-p commit))
       (magit-git-insert-section (commitbuf nil)
           #'magit-wash-commit
         "log" "-1" "--decorate=full"
@@ -4292,14 +4294,20 @@ stash at point, then prompt for a commit."
       (and magit-show-diffstat "--stat")
       magit-diff-options commit)))
 
+(defvar magit-ignore-huge-commits nil)
+
 (defun magit-commit-huge-p (com)
   (let ((res (shell-command-to-string
               (format "git diff --shortstat %s^..%s" com com))))
-    (if (or (string-match "\\([0-9]+\\) insertions" res)
-            (string-match "\\([0-9]+\\) deletions" res))
-        (> (read (match-string-no-properties 1 res)) 1000)
-      (warn "can't match insertions in %S" res)
-      t)))
+    (cond ((string-match "fatal: ambiguous argument" res)
+           ;; first commit
+           t)
+          ((or (string-match "\\([0-9]+\\) insertions" res)
+               (string-match "\\([0-9]+\\) deletions" res))
+           (> (read (match-string-no-properties 1 res)) 10000))
+          (t
+           (warn "can't match insertions in %S" res)
+           t))))
 
 ;;;;; Commit Washing
 
@@ -7534,11 +7542,11 @@ With a prefix argument edit the ignore string."
        (magit-ignore-file (concat "/" info) edit local)
        (magit-run-git "rm" "--cached" info)))))
 
-(defun magit-ignore-item-locally (edit)
+(defun magit-ignore-item-locally (local)
   "Ignore the item at point locally only.
 With a prefix argument edit the ignore string."
   (interactive "P")
-  (magit-ignore-item edit t))
+  (magit-ignore-item nil (not local)))
 
 (defun magit-ignore-file (file &optional edit local)
   "Add FILE to the list of files to ignore.
