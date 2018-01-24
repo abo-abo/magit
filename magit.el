@@ -4397,12 +4397,8 @@ Depending on option `magit-status-buffer-switch-function' the
 status buffer is shown in another window (the default) or the
 current window.  Non-interactively optional SWITCH-FUNCTION
 can be used to override this."
-  (interactive (list (if current-prefix-arg
-                         (magit-read-top-dir
-                          (> (prefix-numeric-value current-prefix-arg)
-                             4))
-                       (or (magit-get-top-dir)
-                           (magit-read-top-dir nil)))))
+  (interactive (list (or (magit-get-top-dir)
+                         (magit-read-top-dir nil))))
   (magit-save-some-buffers)
   (let ((topdir (magit-get-top-dir dir)))
     (when (or topdir
@@ -6727,7 +6723,8 @@ Other key binding:
 (defvar magit-saved-window-config nil)
 
 (defun magit-ediff-restore-window-config ()
-  (remove 'ediff-after-quit-hook-internal 'magit-ediff-restore-window-config)
+  (setq ediff-after-quit-hook-internal
+        (delq 'magit-ediff-restore-window-config ediff-after-quit-hook-internal))
   (when (window-configuration-p magit-saved-window-config)
     (when (eq major-mode 'ediff-mode)
       (kill-buffer))
