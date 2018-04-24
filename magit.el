@@ -4139,9 +4139,13 @@ And refresh the current Magit buffer."
 ;;;; Raw Diff Washing
 
 (defun magit-insert-diff (section file status)
-  (let ((beg (point)))
+  (let ((beg (point))
+        (opts
+         (if (equal magit-diff-options '("--stat"))
+             `("--stat" "--" ,file)
+           `(,(magit-diff-U-arg) ,@magit-diff-options "--" ,file))))
     (apply 'magit-git-insert "-c" "diff.submodule=short" "diff"
-           `(,(magit-diff-U-arg) ,@magit-diff-options "--" ,file))
+           opts)
     (unless (eq (char-before) ?\n)
       (insert "\n"))
     (save-restriction
